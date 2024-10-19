@@ -3,6 +3,15 @@
 A new Flutter project.
 
 ## Getting Started
+This project is a simple Flutter app that uses the `biomark` package to generate a QR
+code that can be used to track the location of a person.
+### Prerequisites
+To run this project, you need to have Flutter installed on your machine.
+### Installing
+To install the `biomark` package, run the following command in your terminal:
+
+
+## Getting Started
 
 This project is a starting point for a Flutter application.
 

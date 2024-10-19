@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
-
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -11,17 +10,33 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   String email = '';
   String password = '';
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Placeholder function for login
-  void loginUser() {
-    // Logic to check credentials against 
+  // Firebase login function
+  Future<void> loginUser() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        // Sign in with email and password using FirebaseAuth
+        UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        print('User logged in: ${userCredential.user?.email}');
+        // Navigate to profile screen after successful login
+        Navigator.pushNamed(context, '/profile');
+      } catch (e) {
+        print('Login failed: $e');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to login')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Login'),
+        title: Text('Login'),
       ),
       body: Form(
         key: _formKey,
@@ -30,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: <Widget>[
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: InputDecoration(labelText: 'Email'),
                 validator: (value) {
                   if (value == null || !value.contains('@')) {
                     return 'Please enter a valid email';
@@ -40,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: InputDecoration(labelText: 'Password'),
                 obscureText: true,
                 validator: (value) {
                   if (value == null || value.length < 6) {
@@ -50,14 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    loginUser();
-                  }
-                },
-                child: const Text('Login'),
+                onPressed: loginUser,
+                child: Text('Login'),
               ),
             ],
           ),

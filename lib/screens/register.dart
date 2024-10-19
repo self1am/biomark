@@ -1,28 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
-
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  String fullName = '';
   String email = '';
   String password = '';
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Placeholder function for database interaction
-  void registerUser() {
-    // Logic to store user data into the SQLite database
+  // Firebase registration function
+  Future<void> registerUser() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        // Create user with email and password using FirebaseAuth
+        UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+        print('User registered: ${userCredential.user?.email}');
+        // Navigate to profile screen after successful registration
+        Navigator.pushNamed(context, '/profile');
+      } catch (e) {
+        print('Registration failed: $e');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Failed to register')));
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: Text('Register'),
       ),
       body: Form(
         key: _formKey,
@@ -31,17 +45,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           child: Column(
             children: <Widget>[
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your full name';
-                  }
-                  fullName = value;
-                  return null;
-                },
-              ),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Email'),
+                decoration: InputDecoration(labelText: 'Email'),
                 validator: (value) {
                   if (value == null || !value.contains('@')) {
                     return 'Please enter a valid email';
@@ -51,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               TextFormField(
-                decoration: const InputDecoration(labelText: 'Password'),
+                decoration: InputDecoration(labelText: 'Password'),
                 obscureText: true,
                 validator: (value) {
                   if (value == null || value.length < 6) {
@@ -61,14 +65,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   return null;
                 },
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    registerUser();
-                  }
-                },
-                child: const Text('Register'),
+                onPressed: registerUser,
+                child: Text('Register'),
               ),
             ],
           ),
