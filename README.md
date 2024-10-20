@@ -160,11 +160,3 @@ Contributions are welcome! Please follow the [Contributor Guidelines](CONTRIBUTI
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
----
-
-### Final Notes
-
-- Always remember to secure your Firebase API keys and configuration files.
-- Follow best practices for sensitive data management by using environment variables and proper `.gitignore` entries.
-
-Feel free to modify this README to better suit your project's specific needs. Let me know if you need further customization!
