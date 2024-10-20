@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:biomark/screens/profileSetup.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -35,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         // Navigate to ProfileSetupScreen after successful registration
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ProfileScreen(user: userCredential.user!)),
+          MaterialPageRoute(builder: (context) => ProfileSetupScreen(user: userCredential.user!)),
         );
       } on FirebaseAuthException catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(

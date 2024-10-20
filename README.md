@@ -76,7 +76,7 @@
 
      Future<void> main() async {
        await dotenv.load(fileName: ".env");
-       runApp(MyApp());
+       runApp(BiomarkApp());
      }
      ```
 
