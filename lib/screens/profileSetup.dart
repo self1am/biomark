@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:biomark/screens/profile.dart';
 
-
 class ProfileSetupScreen extends StatefulWidget {
   final User user;
 
@@ -20,11 +19,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   // Controllers for form fields
   final _fullNameController = TextEditingController();
-  final _dobController = TextEditingController();
-  final _tobController = TextEditingController();
   final _lobController = TextEditingController();
   final _bloodGroupController = TextEditingController();
-  final _sexController = TextEditingController();
   final _heightController = TextEditingController();
   final _ethnicityController = TextEditingController();
   final _eyeColorController = TextEditingController();
@@ -34,15 +30,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _customQuestionController = TextEditingController();
   final _customAnswerController = TextEditingController();
 
+  // State for date, time, and sex
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
+  String? _selectedSex;
+
   @override
   void dispose() {
     // Dispose all controllers
     _fullNameController.dispose();
-    _dobController.dispose();
-    _tobController.dispose();
     _lobController.dispose();
     _bloodGroupController.dispose();
-    _sexController.dispose();
     _heightController.dispose();
     _ethnicityController.dispose();
     _eyeColorController.dispose();
@@ -60,8 +58,40 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       content: Column(
         children: [
           TextFormField(controller: _fullNameController, decoration: InputDecoration(labelText: 'Full Name')),
-          TextFormField(controller: _dobController, decoration: InputDecoration(labelText: 'Date of Birth')),
-          TextFormField(controller: _tobController, decoration: InputDecoration(labelText: 'Time of Birth')),
+          TextFormField(
+            controller: TextEditingController(text: _selectedDate == null ? '' : "${_selectedDate!.toLocal()}".split(' ')[0]),
+            decoration: InputDecoration(labelText: 'Date of Birth'),
+            readOnly: true,  // Prevent manual input
+            onTap: () async {
+              DateTime? pickedDate = await showDatePicker(
+                context: context,
+                initialDate: DateTime.now(),
+                firstDate: DateTime(1900),
+                lastDate: DateTime.now(),
+              );
+              if (pickedDate != null) {
+                setState(() {
+                  _selectedDate = pickedDate;
+                });
+              }
+            },
+          ),
+          TextFormField(
+            controller: TextEditingController(text: _selectedTime == null ? '' : _selectedTime!.format(context)),
+            decoration: InputDecoration(labelText: 'Time of Birth'),
+            readOnly: true,  // Prevent manual input
+            onTap: () async {
+              TimeOfDay? pickedTime = await showTimePicker(
+                context: context,
+                initialTime: TimeOfDay.now(),
+              );
+              if (pickedTime != null) {
+                setState(() {
+                  _selectedTime = pickedTime;
+                });
+              }
+            },
+          ),
           TextFormField(controller: _lobController, decoration: InputDecoration(labelText: 'Location of Birth')),
         ],
       ),
@@ -72,7 +102,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       content: Column(
         children: [
           TextFormField(controller: _bloodGroupController, decoration: InputDecoration(labelText: 'Blood Group')),
-          TextFormField(controller: _sexController, decoration: InputDecoration(labelText: 'Sex')),
+          DropdownButtonFormField<String>(
+            value: _selectedSex,
+            items: ['Male', 'Female', 'Other'].map((String sex) {
+              return DropdownMenuItem<String>(
+                value: sex,
+                child: Text(sex),
+              );
+            }).toList(),
+            onChanged: (String? newValue) {
+              setState(() {
+                _selectedSex = newValue;
+              });
+            },
+            decoration: InputDecoration(labelText: 'Sex'),
+          ),
           TextFormField(controller: _heightController, decoration: InputDecoration(labelText: 'Height')),
           TextFormField(controller: _ethnicityController, decoration: InputDecoration(labelText: 'Ethnicity')),
           TextFormField(controller: _eyeColorController, decoration: InputDecoration(labelText: 'Eye Color')),
@@ -101,11 +145,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         // Store user data in Firestore
         await _firestore.collection('users').doc(widget.user.uid).set({
           'fullName': _fullNameController.text,
-          'dateOfBirth': _dobController.text,
-          'timeOfBirth': _tobController.text,
+          'dateOfBirth': _selectedDate?.toLocal().toString().split(' ')[0],
+          'timeOfBirth': _selectedTime?.format(context),
           'locationOfBirth': _lobController.text,
           'bloodGroup': _bloodGroupController.text,
-          'sex': _sexController.text,
+          'sex': _selectedSex,
           'height': _heightController.text,
           'ethnicity': _ethnicityController.text,
           'eyeColor': _eyeColorController.text,
