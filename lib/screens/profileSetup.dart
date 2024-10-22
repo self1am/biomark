@@ -6,7 +6,7 @@ import 'package:biomark/screens/profile.dart';
 class ProfileSetupScreen extends StatefulWidget {
   final User user;
 
-  ProfileSetupScreen({required this.user});
+  const ProfileSetupScreen({super.key, required this.user});
 
   @override
   _ProfileSetupScreenState createState() => _ProfileSetupScreenState();
@@ -54,13 +54,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   List<Step> get _formSteps => [
     Step(
-      title: Text('Personal Information'),
+      title: const Text('Personal Information'),
       content: Column(
         children: [
-          TextFormField(controller: _fullNameController, decoration: InputDecoration(labelText: 'Full Name')),
+          TextFormField(controller: _fullNameController, decoration: const InputDecoration(labelText: 'Full Name')),
           TextFormField(
             controller: TextEditingController(text: _selectedDate == null ? '' : "${_selectedDate!.toLocal()}".split(' ')[0]),
-            decoration: InputDecoration(labelText: 'Date of Birth'),
+            decoration: const InputDecoration(labelText: 'Date of Birth'),
             readOnly: true,  // Prevent manual input
             onTap: () async {
               DateTime? pickedDate = await showDatePicker(
@@ -78,7 +78,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           TextFormField(
             controller: TextEditingController(text: _selectedTime == null ? '' : _selectedTime!.format(context)),
-            decoration: InputDecoration(labelText: 'Time of Birth'),
+            decoration: const InputDecoration(labelText: 'Time of Birth'),
             readOnly: true,  // Prevent manual input
             onTap: () async {
               TimeOfDay? pickedTime = await showTimePicker(
@@ -92,16 +92,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               }
             },
           ),
-          TextFormField(controller: _lobController, decoration: InputDecoration(labelText: 'Location of Birth')),
+          TextFormField(controller: _lobController, decoration: const InputDecoration(labelText: 'Location of Birth')),
         ],
       ),
       isActive: _currentStep >= 0,
     ),
     Step(
-      title: Text('Physical Characteristics'),
+      title: const Text('Physical Characteristics'),
       content: Column(
         children: [
-          TextFormField(controller: _bloodGroupController, decoration: InputDecoration(labelText: 'Blood Group')),
+          TextFormField(controller: _bloodGroupController, decoration: const InputDecoration(labelText: 'Blood Group')),
           DropdownButtonFormField<String>(
             value: _selectedSex,
             items: ['Male', 'Female', 'Other'].map((String sex) {
@@ -115,24 +115,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 _selectedSex = newValue;
               });
             },
-            decoration: InputDecoration(labelText: 'Sex'),
+            decoration: const InputDecoration(labelText: 'Sex'),
           ),
-          TextFormField(controller: _heightController, decoration: InputDecoration(labelText: 'Height')),
-          TextFormField(controller: _ethnicityController, decoration: InputDecoration(labelText: 'Ethnicity')),
-          TextFormField(controller: _eyeColorController, decoration: InputDecoration(labelText: 'Eye Color')),
+          TextFormField(controller: _heightController, decoration: const InputDecoration(labelText: 'Height')),
+          TextFormField(controller: _ethnicityController, decoration: const InputDecoration(labelText: 'Ethnicity')),
+          TextFormField(controller: _eyeColorController, decoration: const InputDecoration(labelText: 'Eye Color')),
         ],
       ),
       isActive: _currentStep >= 1,
     ),
     Step(
-      title: Text('Security Questions'),
+      title: const Text('Security Questions'),
       content: Column(
         children: [
-          TextFormField(controller: _mothersMaidenNameController, decoration: InputDecoration(labelText: "Mother's Maiden Name")),
-          TextFormField(controller: _childhoodFriendController, decoration: InputDecoration(labelText: "Childhood Best Friend's Name")),
-          TextFormField(controller: _childhoodPetController, decoration: InputDecoration(labelText: "Childhood Pet's Name")),
-          TextFormField(controller: _customQuestionController, decoration: InputDecoration(labelText: 'Custom Security Question')),
-          TextFormField(controller: _customAnswerController, decoration: InputDecoration(labelText: 'Answer to Custom Question')),
+          TextFormField(controller: _mothersMaidenNameController, decoration: const InputDecoration(labelText: "Mother's Maiden Name")),
+          TextFormField(controller: _childhoodFriendController, decoration: const InputDecoration(labelText: "Childhood Best Friend's Name")),
+          TextFormField(controller: _childhoodPetController, decoration: const InputDecoration(labelText: "Childhood Pet's Name")),
+          TextFormField(controller: _customQuestionController, decoration: const InputDecoration(labelText: 'Custom Security Question')),
+          TextFormField(controller: _customAnswerController, decoration: const InputDecoration(labelText: 'Answer to Custom Question')),
         ],
       ),
       isActive: _currentStep >= 2,
@@ -172,7 +172,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Complete Your Profile')),
+      appBar: AppBar(title: const Text('Complete Your Profile')),
       body: Form(
         key: _formKey,
         child: Stepper(

@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (e) {
         print('Login failed: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
+          const SnackBar(
             content: Text('Failed to login. Please check your credentials.'),
             backgroundColor: Colors.red,
           ),
@@ -69,13 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             SingleChildScrollView(
               child: Padding(
-                padding: EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(height: 40),
+                    const SizedBox(height: 40),
                     // Logo or App Name
-                    Text(
+                    const Text(
                       'Biomark',
                       style: TextStyle(
                         fontSize: 40,
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 40),
+                    const SizedBox(height: 40),
                     // Login Form
                     Card(
                       shape: RoundedRectangleBorder(
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       elevation: 10,
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -107,7 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
                               _buildTextField(
                                 controller: _emailController,
                                 label: 'Email',
@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _passwordController,
                                 label: 'Password',
@@ -136,22 +136,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 24),
+                              const SizedBox(height: 24),
                               ElevatedButton(
                                 onPressed: _isLoading ? null : loginUser,
-                                child: _isLoading
-                                    ? CircularProgressIndicator(color: Colors.white)
-                                    : Text('Login', style: TextStyle(fontSize: 18)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue.shade700,
                                   foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                 ),
+                                child: _isLoading
+                                    ? CircularProgressIndicator(color: Colors.white)
+                                    : Text('Login', style: TextStyle(fontSize: 18)),
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               TextButton(
                                 onPressed: () => Navigator.pushNamed(context, '/recovery'),
                                 child: Text('Forgot Password?', style: TextStyle(color: Colors.blue.shade700)),
@@ -161,14 +161,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Don't have an account?", style: TextStyle(color: Colors.white)),
+                        const Text("Don't have an account?", style: TextStyle(color: Colors.white)),
                         TextButton(
                           onPressed: () => Navigator.pushNamed(context, '/register'),
-                          child: Text('Sign Up', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          child: const Text('Sign Up', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         ),
                       ],
                     ),

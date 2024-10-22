@@ -2,26 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
 class ProfileScreen extends StatefulWidget {
   final User user;
 
-  ProfileScreen({required this.user});
+  const ProfileScreen({super.key, required this.user});
 
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   late Map<String, dynamic> _userData;
   bool _isEditing = false;
   File? _profileImage;
+  bool _isUploadingImage = false;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _loadUserData() {
@@ -41,64 +59,70 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _toggleEditMode() {
     setState(() {
       _isEditing = !_isEditing;
+      if (_isEditing) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
     });
   }
 
-  Future<void> _saveProfile() async {
+  Future<void> _pickAndUploadProfileImage() async {
+    final ImagePicker picker = ImagePicker();
+    
     try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1000,
+        maxHeight: 1000,
+        imageQuality: 85,
+      );
+
+      if (pickedFile == null) return;
+
+      setState(() {
+        _isUploadingImage = true;
+        _profileImage = File(pickedFile.path);
+      });
+
+      // Upload to Firebase Storage
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_images')
+          .child('${widget.user.uid}.jpg');
+
+      // Upload the file
+      await storageRef.putFile(_profileImage!);
+
+      // Get the download URL
+      final String downloadURL = await storageRef.getDownloadURL();
+
+      // Update Firestore with new photo URL
       await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.user.uid)
-          .update(_userData);
-      if (_profileImage != null) {
-        // Upload the profile image to Firebase Storage and update the user's profile photo URL
-      }
-      _toggleEditMode();
+          .update({'profilePhotoUrl': downloadURL});
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Profile updated successfully'),
+        const SnackBar(
+          content: Text('Profile photo updated successfully'),
+          backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update profile: $e'),
+          content: Text('Failed to update profile photo: $e'),
+          backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
     }
   }
 
-  Future<void> _unsubscribeFromBiomark() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.user.uid)
-          .delete();
-      await widget.user.delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('You have been unsubscribed from Biomark'),
-        ),
-      );
-      Navigator.of(context).pushReplacementNamed('/login');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to unsubscribe: $e'),
-        ),
-      );
-    }
-  }
-
-  // Future<void> _pickProfileImage() async {
-  //   final pickedFile = await ImagePicker().getImage(source: ImageSource.gallery);
-  //   if (pickedFile != null) {
-  //     setState(() {
-  //       _profileImage = File(pickedFile.path);
-  //     });
-  //   }
-  // }
-  // // this getImage function is deprecated
 
   Future<void> _pickProfileImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -112,281 +136,437 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
       body: _userData == null
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        height: 200,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Colors.blue.shade700, Colors.purple.shade700],
+          ? const Center(child: CircularProgressIndicator())
+          : CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 300,
+                  floating: false,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.blue.shade900,
+                                Colors.purple.shade900,
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            GestureDetector(
-                              onTap: _pickProfileImage,
-                              child: CircleAvatar(
-                                radius: 50,
-                                backgroundImage: _profileImage != null
-                                    ? FileImage(_profileImage!)
-                                    : NetworkImage(_userData['profilePhotoUrl'] ?? 'https://via.placeholder.com/150'),
+                        Positioned(
+                          bottom: 20,
+                          left: 20,
+                          right: 20,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Hero(
+                                tag: 'profile-image',
+                                child: GestureDetector(
+                                  onTap: _isEditing ? _pickProfileImage : null,
+                                  child: Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 4,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 10,
+                                          spreadRadius: 5,
+                                        ),
+                                      ],
+                                    ),
+                                    child: CircleAvatar(
+                                      backgroundImage: _profileImage != null
+                                          ? FileImage(_profileImage!)
+                                          : NetworkImage(_userData['profilePhotoUrl'] ?? 
+                                              'https://via.placeholder.com/150') as ImageProvider,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: TextField(
-                                controller: TextEditingController(text: _userData['fullName']),
-                                onChanged: (value) {
-                                  _userData['fullName'] = value;
-                                },
-                                style: TextStyle(
-                                  fontSize: 24,
+                              const SizedBox(height: 16),
+                              Text(
+                                _userData['fullName'] ?? 'User Name',
+                                style: const TextStyle(
+                                  fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
-                                decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: 'Enter your name',
+                              ),
+                              Text(
+                                _userData['profession'] ?? 'Profession',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white.withOpacity(0.8),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16),
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildInfoCard(
-                          title: 'Personal Info',
-                          children: [
-                            _buildInfoItem(
-                              title: 'Date of Birth',
-                              value: _userData['dateOfBirth'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['dateOfBirth'] = value;
-                              },
-                            ),
-                            _buildInfoItem(
-                              title: 'Profession',
-                              value: _userData['profession'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['profession'] = value;
-                              },
-                            ),
-                            _buildInfoItem(
-                              title: 'Email',
-                              value: widget.user.email ?? '',
-                              editable: false,
-                            ),
-                            _buildInfoItem(
-                              title: 'Phone',
-                              value: _userData['phone'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['phone'] = value;
-                              },
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        _buildInfoCard(
-                          title: 'Details',
-                          children: [
-                            _buildInfoItem(
-                              title: 'Blood Group',
-                              value: _userData['bloodGroup'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['bloodGroup'] = value;
-                              },
-                            ),
-                            _buildInfoItem(
-                              title: 'Height',
-                              value: _userData['height'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['height'] = value;
-                              },
-                            ),
-                            _buildInfoItem(
-                              title: 'Ethnicity',
-                              value: _userData['ethnicity'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['ethnicity'] = value;
-                              },
-                            ),
-                            _buildInfoItem(
-                              title: 'Eye Color',
-                              value: _userData['eyeColor'],
-                              editable: _isEditing,
-                              onChanged: (value) {
-                                _userData['eyeColor'] = value;
-                              },
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        if (_isEditing)
-                          Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: _saveProfile,
-                                  child: Text('Save'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue,
-                                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                ElevatedButton(
-                                  onPressed: _toggleEditMode,
-                                  child: Text('Cancel'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.grey,
-                                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          Center(
-                            child: ElevatedButton(
-                              onPressed: _toggleEditMode,
-                              child: Text('Edit Profile'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                            ),
-                          ),
-                        SizedBox(height: 16),
-                        Center(
-                          child: ElevatedButton(
-                            onPressed: _unsubscribeFromBiomark,
-                            child: Text('Unsubscribe from Biomark'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              padding: EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        _buildSection(
+                          title: 'Personal Information',
+                          icon: Icons.person,
+                          children: [
+                            _buildInfoTile(
+                              icon: Icons.cake,
+                              title: 'Date of Birth',
+                              value: _userData['dateOfBirth'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['dateOfBirth'] = value,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.work,
+                              title: 'Profession',
+                              value: _userData['profession'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['profession'] = value,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.email,
+                              title: 'Email',
+                              value: widget.user.email,
+                              editable: false,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.phone,
+                              title: 'Phone',
+                              value: _userData['phone'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['phone'] = value,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        _buildSection(
+                          title: 'Medical Information',
+                          icon: Icons.medical_services,
+                          children: [
+                            _buildInfoTile(
+                              icon: Icons.bloodtype,
+                              title: 'Blood Group',
+                              value: _userData['bloodGroup'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['bloodGroup'] = value,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.height,
+                              title: 'Height',
+                              value: _userData['height'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['height'] = value,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.people,
+                              title: 'Ethnicity',
+                              value: _userData['ethnicity'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['ethnicity'] = value,
+                            ),
+                            _buildInfoTile(
+                              icon: Icons.remove_red_eye,
+                              title: 'Eye Color',
+                              value: _userData['eyeColor'],
+                              editable: _isEditing,
+                              onChanged: (value) => _userData['eyeColor'] = value,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: _isEditing
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          child: _buildActionButton(
+                                            onPressed: _saveProfile,  // Changed from the previous version
+                                            icon: Icons.save,
+                                            label: 'Save Changes',
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                          child: _buildActionButton(
+                                            onPressed: _toggleEditMode,
+                                            icon: Icons.close,
+                                            label: 'Cancel',
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : _buildActionButton(
+                                  onPressed: _toggleEditMode,
+                                  icon: Icons.edit,
+                                  label: 'Edit Profile',
+                                  color: Colors.blue,
+                                ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildActionButton(
+                          onPressed: () => _showUnsubscribeDialog(context),
+                          icon: Icons.logout,
+                          label: 'Unsubscribe from Biomark',
+                          color: Colors.red,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
 
-  Widget _buildInfoCard({
+  Widget _buildSection({
     required String title,
+    required IconData icon,
     required List<Widget> children,
   }) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 5,
+          ),
+        ],
       ),
-      elevation: 4,
-      child: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade700,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.blue.shade900),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+              ],
             ),
-            SizedBox(height: 8),
-            ...children,
-          ],
+          ),
+          const Divider(height: 1),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTile({
+    required IconData icon,
+    required String title,
+    required String? value,
+    required bool editable,
+    void Function(String)? onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.grey, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                if (editable)
+                  TextField(
+                    controller: TextEditingController(text: value),
+                    onChanged: onChanged,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  )
+                else
+                  Text(
+                    value ?? '',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required VoidCallback onPressed,
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoItem({
-    required String title,
-    required String? value,
-    bool editable = false,
-    void Function(String)? onChanged,
-  }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey.shade800,
-            ),
+  Future<void> _showUnsubscribeDialog(BuildContext context) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Unsubscribe'),
+          content: const Text(
+            'Are you sure you want to unsubscribe from Biomark? This action cannot be undone.',
           ),
-          if (editable)
-            Expanded(
-              child: TextField(
-                controller: TextEditingController(text: value),
-                onChanged: onChanged,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade800,
-                ),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: value,
-                ),
-              ),
-            )
-          else
-            Text(
-              value ?? '',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade800,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _unsubscribeFromBiomark();
+              },
+              child: const Text(
+                'Unsubscribe',
+                style: TextStyle(color: Colors.red),
               ),
             ),
-        ],
-      ),
+          ],
+        );
+      },
     );
+  }
+
+  Future<void> _saveProfile() async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.user.uid)
+          .update(_userData);
+      
+      if (_profileImage != null) {
+        // Upload the profile image to Firebase Storage and update the user's profile photo URL
+        final File imageFile = File(_profileImage!.path);
+        final String downloadUrl = await FirebaseStorage.instance
+        .ref('profile_images/${widget.user.uid}')
+        .putFile(imageFile)
+        .then((taskSnapshot) => taskSnapshot.ref.getDownloadURL());
+
+      }
+
+      // Hide loading indicator
+      Navigator.pop(context);
+      
+      _toggleEditMode();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Hide loading indicator
+      Navigator.pop(context);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _unsubscribeFromBiomark() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.user.uid)
+          .delete();
+      await widget.user.delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have been unsubscribed from Biomark'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+      Navigator.of(context).pushReplacementNamed('/');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to unsubscribe: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

@@ -24,7 +24,7 @@ class BiomarkApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => LoginScreen(),
+        '/': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
         '/recovery': (context) => const RecoveryScreen(),
       },
@@ -38,7 +38,7 @@ class BiomarkApp extends StatelessWidget {
           } else {
             // Handle the case when the user is not logged in
             return MaterialPageRoute(
-              builder: (context) => LoginScreen(),
+              builder: (context) => const LoginScreen(),
             );
           }
         }

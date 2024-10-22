@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:biomark/screens/profileSetup.dart';
 
 class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
+
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
 }
@@ -68,13 +70,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             SingleChildScrollView(
               child: Padding(
-                padding: EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    SizedBox(height: 40),
+                    const SizedBox(height: 40),
                     // Logo or App Name
-                    Text(
+                    const Text(
                       'Biomark',
                       style: TextStyle(
                         fontSize: 40,
@@ -83,7 +85,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 40),
+                    const SizedBox(height: 40),
                     // Registration Form
                     Card(
                       shape: RoundedRectangleBorder(
@@ -91,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       elevation: 10,
                       child: Padding(
-                        padding: EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(20),
                         child: Form(
                           key: _formKey,
                           child: Column(
@@ -106,7 +108,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 20),
+                              const SizedBox(height: 20),
                               _buildTextField(
                                 controller: _emailController,
                                 label: 'Email',
@@ -121,7 +123,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _passwordController,
                                 label: 'Password',
@@ -141,7 +143,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               _buildTextField(
                                 controller: _confirmPasswordController,
                                 label: 'Confirm Password',
@@ -154,30 +156,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   return null;
                                 },
                               ),
-                              SizedBox(height: 24),
+                              const SizedBox(height: 24),
                               ElevatedButton(
                                 onPressed: _isLoading ? null : _register,
-                                child: _isLoading
-                                    ? CircularProgressIndicator(color: Colors.white)
-                                    : Text('Create Account', style: TextStyle(fontSize: 18)),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.blue.shade700,
                                   foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                 ),
+                                child: _isLoading
+                                    ? CircularProgressIndicator(color: Colors.white)
+                                    : Text('Create Account', style: TextStyle(fontSize: 18)),
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
                     TextButton(
                       onPressed: () => Navigator.pushNamed(context, '/'),
-                      child: Text(
+                      child: const Text(
                         'Already have an account? Login',
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
