@@ -2,6 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:biomark/screens/profile.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
+
+final key = encrypt.Key.fromUtf8('16-character-key!');  // You can customize this key
+final iv = encrypt.IV.fromLength(16);
+final encrypter = encrypt.Encrypter(encrypt.AES(key));
+
+String encryptData(String text) {
+  final encrypted = encrypter.encrypt(text, iv: iv);
+  return encrypted.base64;
+}
+
+String decryptData(String base64Text) {
+  final decrypted = encrypter.decrypt64(base64Text, iv: iv);
+  return decrypted;
+}
 
 class ProfileSetupScreen extends StatefulWidget {
   final User user;
@@ -16,6 +31,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   int _currentStep = 0;
   final _firestore = FirebaseFirestore.instance;
+  final _scrollController = ScrollController();
 
   // Controllers for form fields
   final _fullNameController = TextEditingController();
@@ -37,7 +53,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   void dispose() {
-    // Dispose all controllers
+    _scrollController.dispose();
+    // Dispose all other controllers
     _fullNameController.dispose();
     _lobController.dispose();
     _bloodGroupController.dispose();
@@ -52,88 +69,187 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     super.dispose();
   }
 
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          filled: true,
+          fillColor: Colors.grey[50],
+        ),
+        readOnly: readOnly,
+        onTap: onTap,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Please enter $label';
+          }
+          return null;
+        },
+      ),
+    );
+  }
+
   List<Step> get _formSteps => [
     Step(
-      title: const Text('Personal Information'),
-      content: Column(
-        children: [
-          TextFormField(controller: _fullNameController, decoration: const InputDecoration(labelText: 'Full Name')),
-          TextFormField(
-            controller: TextEditingController(text: _selectedDate == null ? '' : "${_selectedDate!.toLocal()}".split(' ')[0]),
-            decoration: const InputDecoration(labelText: 'Date of Birth'),
-            readOnly: true,  // Prevent manual input
-            onTap: () async {
-              DateTime? pickedDate = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(1900),
-                lastDate: DateTime.now(),
-              );
-              if (pickedDate != null) {
-                setState(() {
-                  _selectedDate = pickedDate;
-                });
-              }
-            },
-          ),
-          TextFormField(
-            controller: TextEditingController(text: _selectedTime == null ? '' : _selectedTime!.format(context)),
-            decoration: const InputDecoration(labelText: 'Time of Birth'),
-            readOnly: true,  // Prevent manual input
-            onTap: () async {
-              TimeOfDay? pickedTime = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay.now(),
-              );
-              if (pickedTime != null) {
-                setState(() {
-                  _selectedTime = pickedTime;
-                });
-              }
-            },
-          ),
-          TextFormField(controller: _lobController, decoration: const InputDecoration(labelText: 'Location of Birth')),
-        ],
+      title: const Text('Personal'),
+      content: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTextField(
+              controller: _fullNameController,
+              label: 'Full Name',
+            ),
+            _buildTextField(
+              controller: TextEditingController(
+                text: _selectedDate == null ? '' : "${_selectedDate!.toLocal()}".split(' ')[0]
+              ),
+              label: 'Date of Birth',
+              readOnly: true,
+              onTap: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                  builder: (context, child) {
+                    return Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: ColorScheme.light(
+                          primary: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                      child: child!,
+                    );
+                  },
+                );
+                if (pickedDate != null) {
+                  setState(() {
+                    _selectedDate = pickedDate;
+                  });
+                }
+              },
+            ),
+            _buildTextField(
+              controller: TextEditingController(
+                text: _selectedTime == null ? '' : _selectedTime!.format(context)
+              ),
+              label: 'Time of Birth',
+              readOnly: true,
+              onTap: () async {
+                TimeOfDay? pickedTime = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (pickedTime != null) {
+                  setState(() {
+                    _selectedTime = pickedTime;
+                  });
+                }
+              },
+            ),
+            _buildTextField(
+              controller: _lobController,
+              label: 'Location of Birth',
+            ),
+          ],
+        ),
       ),
       isActive: _currentStep >= 0,
     ),
     Step(
-      title: const Text('Physical Characteristics'),
-      content: Column(
-        children: [
-          TextFormField(controller: _bloodGroupController, decoration: const InputDecoration(labelText: 'Blood Group')),
-          DropdownButtonFormField<String>(
-            value: _selectedSex,
-            items: ['Male', 'Female', 'Other'].map((String sex) {
-              return DropdownMenuItem<String>(
-                value: sex,
-                child: Text(sex),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              setState(() {
-                _selectedSex = newValue;
-              });
-            },
-            decoration: const InputDecoration(labelText: 'Sex'),
-          ),
-          TextFormField(controller: _heightController, decoration: const InputDecoration(labelText: 'Height')),
-          TextFormField(controller: _ethnicityController, decoration: const InputDecoration(labelText: 'Ethnicity')),
-          TextFormField(controller: _eyeColorController, decoration: const InputDecoration(labelText: 'Eye Color')),
-        ],
+      title: const Text('Physical'),
+      content: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTextField(
+              controller: _bloodGroupController,
+              label: 'Blood Group',
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: DropdownButtonFormField<String>(
+                value: _selectedSex,
+                decoration: InputDecoration(
+                  labelText: 'Sex',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
+                ),
+                items: ['Male', 'Female', 'Other'].map((String sex) {
+                  return DropdownMenuItem<String>(
+                    value: sex,
+                    child: Text(sex),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedSex = newValue;
+                  });
+                },
+              ),
+            ),
+            _buildTextField(
+              controller: _heightController,
+              label: 'Height',
+            ),
+            _buildTextField(
+              controller: _ethnicityController,
+              label: 'Ethnicity',
+            ),
+            _buildTextField(
+              controller: _eyeColorController,
+              label: 'Eye Color',
+            ),
+          ],
+        ),
       ),
       isActive: _currentStep >= 1,
     ),
     Step(
-      title: const Text('Security Questions'),
-      content: Column(
-        children: [
-          TextFormField(controller: _mothersMaidenNameController, decoration: const InputDecoration(labelText: "Mother's Maiden Name")),
-          TextFormField(controller: _childhoodFriendController, decoration: const InputDecoration(labelText: "Childhood Best Friend's Name")),
-          TextFormField(controller: _childhoodPetController, decoration: const InputDecoration(labelText: "Childhood Pet's Name")),
-          TextFormField(controller: _customQuestionController, decoration: const InputDecoration(labelText: 'Custom Security Question')),
-          TextFormField(controller: _customAnswerController, decoration: const InputDecoration(labelText: 'Answer to Custom Question')),
-        ],
+      title: const Text('Security'),
+      content: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTextField(
+              controller: _mothersMaidenNameController,
+              label: "Mother's Maiden Name",
+            ),
+            _buildTextField(
+              controller: _childhoodFriendController,
+              label: "Childhood Best Friend's Name",
+            ),
+            _buildTextField(
+              controller: _childhoodPetController,
+              label: "Childhood Pet's Name",
+            ),
+            _buildTextField(
+              controller: _customQuestionController,
+              label: 'Custom Security Question',
+            ),
+            _buildTextField(
+              controller: _customAnswerController,
+              label: 'Answer to Custom Question',
+            ),
+          ],
+        ),
       ),
       isActive: _currentStep >= 2,
     ),
@@ -142,7 +258,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       try {
-        // Store user data in Firestore
         await _firestore.collection('users').doc(widget.user.uid).set({
           'fullName': _fullNameController.text,
           'dateOfBirth': _selectedDate?.toLocal().toString().split(' ')[0],
@@ -153,17 +268,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           'height': _heightController.text,
           'ethnicity': _ethnicityController.text,
           'eyeColor': _eyeColorController.text,
-          // Store security questions separately or encrypt them
+          'mothersMaidenName': encryptData(_mothersMaidenNameController.text),
+          'childhoodFriend': encryptData(_childhoodFriendController.text),
+          'childhoodPet': encryptData(_childhoodPetController.text),
+          'customQuestion': encryptData(_customQuestionController.text),
+          'customAnswer': encryptData(_customAnswerController.text),
         });
 
-        // Navigate to ProfileScreen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => ProfileScreen(user: widget.user)),
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error saving profile: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error saving profile: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -172,29 +293,60 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Complete Your Profile')),
-      body: Form(
-        key: _formKey,
-        child: Stepper(
-          type: StepperType.horizontal,
-          currentStep: _currentStep,
-          onStepContinue: () {
-            if (_currentStep < _formSteps.length - 1) {
-              setState(() {
-                _currentStep += 1;
-              });
-            } else {
-              _submitForm();
-            }
-          },
-          onStepCancel: () {
-            if (_currentStep > 0) {
-              setState(() {
-                _currentStep -= 1;
-              });
-            }
-          },
-          steps: _formSteps,
+      appBar: AppBar(
+        title: const Text('Complete Your Profile'),
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Form(
+          key: _formKey,
+          child: Stepper(
+            type: StepperType.vertical,  // Changed to vertical for better mobile experience
+            currentStep: _currentStep,
+            controlsBuilder: (context, details) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: Row(
+                  children: [
+                    if (_currentStep > 0)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: details.onStepCancel,
+                          child: const Text('Back'),
+                        ),
+                      ),
+                    if (_currentStep > 0)
+                      const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: details.onStepContinue,
+                        child: Text(
+                          _currentStep == _formSteps.length - 1 ? 'Submit' : 'Next'
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+            onStepContinue: () {
+              if (_currentStep < _formSteps.length - 1) {
+                setState(() {
+                  _currentStep += 1;
+                });
+              } else {
+                _submitForm();
+              }
+            },
+            onStepCancel: () {
+              if (_currentStep > 0) {
+                setState(() {
+                  _currentStep -= 1;
+                });
+              }
+            },
+            steps: _formSteps,
+          ),
         ),
       ),
     );

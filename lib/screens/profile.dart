@@ -1,3 +1,4 @@
+import 'package:biomark/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -52,17 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         setState(() {
           _userData = snapshot.data()!;
         });
-      }
-    });
-  }
-
-  void _toggleEditMode() {
-    setState(() {
-      _isEditing = !_isEditing;
-      if (_isEditing) {
-        _animationController.forward();
-      } else {
-        _animationController.reverse();
       }
     });
   }
@@ -123,6 +113,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     }
   }
 
+  void _toggleEditMode() {
+    setState(() {
+      _isEditing = !_isEditing;
+      if (_isEditing) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    });
+  }
 
   Future<void> _pickProfileImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -131,6 +131,75 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         _profileImage = File(pickedFile.path);
       });
     }
+  }
+
+  Widget _buildProfileImage() {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: _pickAndUploadProfileImage,
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white,
+                width: 4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 10,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircleAvatar(
+                  backgroundImage: _profileImage != null
+                      ? FileImage(_profileImage!)
+                      : (_userData['profilePhotoUrl'] != null
+                          ? NetworkImage(_userData['profilePhotoUrl'])
+                          : const AssetImage('assets/default-avatar.jpg')) as ImageProvider,
+                ),
+                if (_isUploadingImage)
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade900,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(
+              Icons.camera_alt,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -169,33 +238,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                             children: [
                               Hero(
                                 tag: 'profile-image',
-                                child: GestureDetector(
-                                  onTap: _isEditing ? _pickProfileImage : null,
-                                  child: Container(
-                                    width: 120,
-                                    height: 120,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 4,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
-                                          blurRadius: 10,
-                                          spreadRadius: 5,
-                                        ),
-                                      ],
-                                    ),
-                                    child: CircleAvatar(
-                                      backgroundImage: _profileImage != null
-                                          ? FileImage(_profileImage!)
-                                          : NetworkImage(_userData['profilePhotoUrl'] ?? 
-                                              'https://via.placeholder.com/150') as ImageProvider,
-                                    ),
-                                  ),
-                                ),
+                                child: _buildProfileImage(),  // Using the new profile image widget
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -335,9 +378,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                 ),
                         ),
                         const SizedBox(height: 16),
+                        // logout button
+                        _buildActionButton(
+                          onPressed: _logout,
+                          icon: Icons.logout,
+                          label: 'Logout',
+                          color: Colors.blueGrey,
+                        ),
+                        const SizedBox(height: 16),
                         _buildActionButton(
                           onPressed: () => _showUnsubscribeDialog(context),
-                          icon: Icons.logout,
+                          icon: Icons.unsubscribe,
                           label: 'Unsubscribe from Biomark',
                           color: Colors.red,
                         ),
@@ -462,6 +513,14 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           ),
         ),
       ),
+    );
+  }
+
+  // _logout
+  void _logout() {
+    FirebaseAuth.instance.signOut();
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
   }
 
