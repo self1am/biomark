@@ -168,8 +168,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 ),
                                 child: _isLoading
-                                    ? CircularProgressIndicator(color: Colors.white)
-                                    : Text('Create Account', style: TextStyle(fontSize: 18)),
+                                    ? const CircularProgressIndicator(color: Colors.white)
+                                    : const Text('Create Account', style: TextStyle(fontSize: 18)),
                               ),
                             ],
                           ),

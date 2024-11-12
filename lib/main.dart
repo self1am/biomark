@@ -25,7 +25,7 @@ class BiomarkApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginScreen(),
-        '/register': (context) => RegisterScreen(),
+        '/register': (context) => const RegisterScreen(),
         '/recovery': (context) => const RecoveryScreen(),
       },
       onGenerateRoute: (settings) {

@@ -3,8 +3,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:biomark/screens/profile.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:biomark/db/database_helper.dart';
 
-final key = encrypt.Key.fromUtf8('16-character-key!');  // You can customize this key
+
+final key = encrypt.Key.fromUtf8('thisisaverysecretkey123456789012'); // 32 characters for 256-bit encryption
 final iv = encrypt.IV.fromLength(16);
 final encrypter = encrypt.Encrypter(encrypt.AES(key));
 
@@ -255,9 +257,45 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     ),
   ];
 
+  // Future<void> _submitForm() async {
+  //   if (_formKey.currentState!.validate()) {
+  //     try {
+  //       await _firestore.collection('users').doc(widget.user.uid).set({
+  //         'fullName': _fullNameController.text,
+  //         'dateOfBirth': _selectedDate?.toLocal().toString().split(' ')[0],
+  //         'timeOfBirth': _selectedTime?.format(context),
+  //         'locationOfBirth': _lobController.text,
+  //         'bloodGroup': _bloodGroupController.text,
+  //         'sex': _selectedSex,
+  //         'height': _heightController.text,
+  //         'ethnicity': _ethnicityController.text,
+  //         'eyeColor': _eyeColorController.text,
+  //         'mothersMaidenName': encryptData(_mothersMaidenNameController.text),
+  //         'childhoodFriend': encryptData(_childhoodFriendController.text),
+  //         'childhoodPet': encryptData(_childhoodPetController.text),
+  //         'customQuestion': encryptData(_customQuestionController.text),
+  //         'customAnswer': encryptData(_customAnswerController.text),
+  //       });
+
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(builder: (context) => ProfileScreen(user: widget.user)),
+  //       );
+  //     } catch (e) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text('Error saving profile: $e'),
+  //           backgroundColor: Colors.red,
+  //         ),
+  //       );
+  //     }
+  //   }
+  // }
+
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
       try {
+        // Save data in Firestore as before
         await _firestore.collection('users').doc(widget.user.uid).set({
           'fullName': _fullNameController.text,
           'dateOfBirth': _selectedDate?.toLocal().toString().split(' ')[0],
@@ -268,13 +306,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           'height': _heightController.text,
           'ethnicity': _ethnicityController.text,
           'eyeColor': _eyeColorController.text,
+        });
+
+        // Prepare encrypted security answers
+        final securityData = {
           'mothersMaidenName': encryptData(_mothersMaidenNameController.text),
           'childhoodFriend': encryptData(_childhoodFriendController.text),
           'childhoodPet': encryptData(_childhoodPetController.text),
           'customQuestion': encryptData(_customQuestionController.text),
           'customAnswer': encryptData(_customAnswerController.text),
-        });
+        };
 
+        // Save encrypted answers in SQLite
+        await DatabaseHelper.instance.saveSecurityQuestions(widget.user.uid, securityData);
+
+        // Navigate to profile screen
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => ProfileScreen(user: widget.user)),

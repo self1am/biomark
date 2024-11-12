@@ -1,36 +1,32 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'dart:async';
-import 'package:crypto/crypto.dart';
-import 'dart:convert';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
-  static Database? _db;
+  static final DatabaseHelper instance = DatabaseHelper._init();
+  static Database? _database;
 
-  DatabaseHelper._internal();
+  DatabaseHelper._init();
 
   Future<Database> get database async {
-    if (_db != null) return _db!;
-    _db = await initDB();
-    return _db!;
+    if (_database != null) return _database!;
+    _database = await _initDB('user_data.db');
+    return _database!;
   }
 
-  initDB() async {
-    String path = join(await getDatabasesPath(), 'biomark_local.db');
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+  Future<Database> _initDB(String filePath) async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, filePath);
+    return await openDatabase(path, version: 1, onCreate: _createDB);
   }
 
-  void _onCreate(Database db, int version) async {
+  Future _createDB(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE RecoveryInfo (
-        id INTEGER PRIMARY KEY,
-        userId TEXT,
-        fullName TEXT,
-        dateOfBirth TEXT,
+      CREATE TABLE security_questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId TEXT NOT NULL,
         mothersMaidenName TEXT,
-        childhoodBestFriend TEXT,
+        childhoodFriend TEXT,
         childhoodPet TEXT,
         customQuestion TEXT,
         customAnswer TEXT
@@ -38,34 +34,47 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<int> insertRecoveryInfo(Map<String, dynamic> row) async {
-    Database db = await database;
-    return await db.insert('RecoveryInfo', _hashSensitiveData(row));
+  Future<void> saveSecurityQuestions(String userId, Map<String, String> data) async {
+    final db = await instance.database;
+    await db.insert(
+      'security_questions',
+      {
+        'userId': userId,
+        'mothersMaidenName': data['mothersMaidenName'],
+        'childhoodFriend': data['childhoodFriend'],
+        'childhoodPet': data['childhoodPet'],
+        'customQuestion': data['customQuestion'],
+        'customAnswer': data['customAnswer'],
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
-  Future<Map<String, dynamic>?> getRecoveryInfo(String userId) async {
-    Database db = await database;
-    List<Map<String, dynamic>> results = await db.query(
-      'RecoveryInfo',
+  Future<Map<String, String>?> getSecurityQuestions(String userId) async {
+    final db = await instance.database;
+    final result = await db.query(
+      'security_questions',
+      columns: [
+        'mothersMaidenName',
+        'childhoodFriend',
+        'childhoodPet',
+        'customQuestion',
+        'customAnswer'
+      ],
       where: 'userId = ?',
       whereArgs: [userId],
     );
-    return results.isNotEmpty ? results.first : null;
-  }
 
-  Map<String, dynamic> _hashSensitiveData(Map<String, dynamic> data) {
-    var sensitiveFields = ['mothersMaidenName', 'childhoodBestFriend', 'childhoodPet', 'customAnswer'];
-    for (var field in sensitiveFields) {
-      if (data.containsKey(field)) {
-        data[field] = _hash(data[field]);
-      }
+    if (result.isNotEmpty) {
+      return {
+        'mothersMaidenName': result.first['mothersMaidenName'] as String,
+        'childhoodFriend': result.first['childhoodFriend'] as String,
+        'childhoodPet': result.first['childhoodPet'] as String,
+        'customQuestion': result.first['customQuestion'] as String,
+        'customAnswer': result.first['customAnswer'] as String,
+      };
+    } else {
+      return null;
     }
-    return data;
-  }
-
-  String _hash(String input) {
-    var bytes = utf8.encode(input);
-    var digest = sha256.convert(bytes);
-    return digest.toString();
   }
 }
